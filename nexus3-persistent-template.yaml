@@ -58,18 +58,24 @@ objects:
         - env:
           - name: CONTEXT_PATH
             value: /
+          - name: HOME
+            value: /nexus-data
+          - name: INSTALL4J_ADD_VM_PARAMS
+            value: ${JAVA_ARGS} -Djava.util.prefs.userRoot=/nexus-data/javaprefs
           image: ' '
           imagePullPolicy: IfNotPresent
           livenessProbe:
             exec:
               command:
-              - echo
-              - ok
-            failureThreshold: 3
-            initialDelaySeconds: 30
+              - sh
+              - -c
+              - reply=`curl -s -o /dev/null -w %{http_code} "http://127.0.0.1:8081/static/css/nexus-content.css"`;
+                if test "$reply" -lt 200 -o "$reply" -ge 400; then exit 1; elif ! ls /nexus-data; then exit 2; fi
+            failureThreshold: 60
+            initialDelaySeconds: 120
             periodSeconds: 10
             successThreshold: 1
-            timeoutSeconds: 1
+            timeoutSeconds: 2
           name: nexus
           ports:
           - containerPort: 8081
@@ -77,7 +83,7 @@ objects:
           readinessProbe:
             failureThreshold: 3
             httpGet:
-              path: /
+              path: /static/css/nexus-content.css
               port: 8081
               scheme: HTTP
             initialDelaySeconds: 30
@@ -86,13 +92,19 @@ objects:
             timeoutSeconds: 1
           resources:
             limits:
-              memory: ${MAX_MEMORY}
+              cpu: ${CPU_LIMIT}
+              memory: ${MEMORY_LIMIT}
             requests:
-              memory: 512Mi
+              cpu: ${CPU_REQUEST}
+              memory: ${MEMORY_REQUEST}
           volumeMounts:
           - mountPath: /nexus-data
             name: data
+          - mountPath: /nexus-data/log
+            name: logs
         volumes:
+        - emptyDir: {}
+          name: logs
         - name: data
           persistentVolumeClaim:
             claimName: ${SERVICE_NAME}-pv
@@ -115,7 +127,7 @@ objects:
     name: ${SERVICE_NAME}
   spec:
     ports:
-    - name: 8081-tcp
+    - name: http
       port: 8081
       protocol: TCP
       targetPort: 8081
@@ -126,12 +138,12 @@ objects:
 - apiVersion: v1
   kind: Route
   metadata:
+    annotations:
+      haproxy.router.openshift.io/timeout: 5m
     labels:
       app: ${SERVICE_NAME}
     name: ${SERVICE_NAME}
   spec:
-    port:
-      targetPort: 8081-tcp
     tls:
       insecureEdgeTerminationPolicy: Redirect
       termination: edge
@@ -152,24 +164,39 @@ objects:
       requests:
         storage: ${VOLUME_CAPACITY}
 parameters:
-- displayName: Sonatype Nexus service name
-  name: SERVICE_NAME
-  required: true
-  value: nexus
+- description: CPU Limit
+  displayName: Nexus CPU Limit
+  name: CPU_LIMIT
+  value: 500m
+- description: CPU Request
+  displayName: Nexus CPU Request
+  name: CPU_REQUEST
+  value: 200m
+- name: HTTP_PROXY
+- name: HTTPS_PROXY
+- description: Java Arguments
+  displayName: JAVA_ARGS
+  name: JAVA_ARGS
+  value: -Xms1400m -Xmx1400m -XX:MaxDirectMemorySize=2g
+- description: Memory Limit
+  displayName: Nexus Memory Limit
+  name: MEMORY_LIMIT
+  value: 4200Mi
+- description: Memory Request
+  displayName: Nexus Memory Request
+  name: MEMORY_REQUEST
+  value: 3800Mi
 - displayName: Sonatype Nexus version
   name: NEXUS_VERSION
   required: true
   value: 3.13.0
+- name: NO_PROXY
+- displayName: Sonatype Nexus service name
+  name: SERVICE_NAME
+  required: true
+  value: nexus
 - description: Volume space available for Sonatype Nexus e.g. 512Mi, 2Gi
   displayName: Volume Space for Nexus
   name: VOLUME_CAPACITY
   required: true
   value: 2Gi
-- description: Max memory allocated to the Nexus pod
-  displayName: Max Memory
-  name: MAX_MEMORY
-  required: true
-  value: 2Gi
-- name: HTTP_PROXY
-- name: HTTPS_PROXY
-- name: NO_PROXY
