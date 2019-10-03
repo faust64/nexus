@@ -3,10 +3,10 @@ kind: Template
 labels:
   template: nexus3-persistent-template
 metadata:
-  name: nexus3-persistent
   annotations:
     description: Sonatype Nexus 3 persistent template
     tags: ci,nexus
+  name: nexus3-persistent
 objects:
 - apiVersion: v1
   kind: ImageStream
@@ -40,14 +40,14 @@ objects:
             command:
               - "/bin/bash"
               - "-c"
-              - "curl -o /tmp/nexus-functions -s https://raw.githubusercontent.com/OpenShiftDemos/nexus/master/scripts/nexus-functions; source /tmp/nexus-functions; add_nexus3_redhat_repos admin admin123 http://${SERVICE_NAME}:8081"
+              - "curl -o /tmp/nexus-functions -s https://raw.githubusercontent.com/faust64/nexus/master/scripts/nexus-functions; source /tmp/nexus-functions; add_nexus3_redhat_repos admin admin123 http://${SERVICE_NAME}:8081; if test \"$HTTP_PROXY\"; then add_nexus3_proxy; fi"
             env:
             - name: HTTP_PROXY
-              value: ${HTTP_PROXY}
+              value: "${HTTP_PROXY}"
             - name: HTTPS_PROXY
-              value: ${HTTPS_PROXY}
+              value: "${HTTPS_PROXY}"
             - name: NO_PROXY
-              value: ${NO_PROXY}
+              value: "${NO_PROXY}"
       type: Recreate
     template:
       metadata:
@@ -58,6 +58,12 @@ objects:
         - env:
           - name: CONTEXT_PATH
             value: /
+          - name: HTTP_PROXY
+            value: "${HTTP_PROXY}"
+          - name: HTTPS_PROXY
+            value: "${HTTPS_PROXY}"
+          - name: NO_PROXY
+            value: "${NO_PROXY}"
           image: ' '
           imagePullPolicy: IfNotPresent
           livenessProbe:
@@ -70,7 +76,7 @@ objects:
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 1
-          name: ${SERVICE_NAME}
+          name: nexus
           ports:
           - containerPort: 8081
             protocol: TCP
@@ -89,16 +95,11 @@ objects:
               memory: ${MAX_MEMORY}
             requests:
               memory: 512Mi
-          terminationMessagePath: /dev/termination-log
           volumeMounts:
           - mountPath: /nexus-data
-            name: ${SERVICE_NAME}-data
-        dnsPolicy: ClusterFirst
-        restartPolicy: Always
-        securityContext: {}
-        terminationGracePeriodSeconds: 30
+            name: data
         volumes:
-        - name: ${SERVICE_NAME}-data
+        - name: data
           persistentVolumeClaim:
             claimName: ${SERVICE_NAME}-pv
     test: false
@@ -107,7 +108,7 @@ objects:
     - imageChangeParams:
         automatic: true
         containerNames:
-        - ${SERVICE_NAME}
+        - nexus
         from:
           kind: ImageStreamTag
           name: ${SERVICE_NAME}:${NEXUS_VERSION}
@@ -161,7 +162,7 @@ parameters:
 - displayName: Sonatype Nexus version
   name: NEXUS_VERSION
   required: true
-  value: 3.6.0
+  value: 3.13.0
 - description: Volume space available for Sonatype Nexus e.g. 512Mi, 2Gi
   displayName: Volume Space for Nexus
   name: VOLUME_CAPACITY
@@ -171,7 +172,7 @@ parameters:
   displayName: Max Memory
   name: MAX_MEMORY
   required: true
-  value: 1Gi
+  value: 2Gi
 - name: HTTP_PROXY
 - name: HTTPS_PROXY
 - name: NO_PROXY

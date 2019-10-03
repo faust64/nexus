@@ -114,6 +114,67 @@ EOM
   curl -v -X POST -H "Content-Type: text/plain" -u "$_NEXUS_USER:$_NEXUS_PWD" "${_NEXUS_URL}/service/rest/v1/script/$_REPO_ID/run"
 }
 
+function add_nexus3_proxy() {
+  PROXY_HOST=$(echo $HTTP_PROXY | sed 's|.*://||')
+  if echo "$PROXY_HOST" | grep : >/dev/null; then
+    PROXY_PORT=$(echo $PROXY_HOST | cut -d: -f2)
+    PROXY_HOST=$(echo $PROXY_HOST | cut -d: -f1)
+  else
+    PROXY_PORT=3128
+  fi
+  local _NEXUS_USER=$1
+  local _NEXUS_PWD=$2
+  local _NEXUS_URL=$3
+
+  read -r -d '' _PROXY_JSON << EOM
+{
+  "name": "httpproxy",
+  "type": "groovy",
+  "content": "core.httpProxy('$PROXY_HOST', '$PROXY_PORT')"
+}
+EOM
+
+  # Pre Nexus 3.8
+  curl -v -H "Accept: application/json" -H "Content-Type: application/json" -d "$_PROXY_JSON" -u "$_NEXUS_USER:$_NEXUS_PWD" "${_NEXUS_URL}/service/siesta/rest/v1/script/"
+  curl -v -X POST -H "Content-Type: text/plain" -u "$_NEXUS_USER:$_NEXUS_PWD" "${_NEXUS_URL}/service/siesta/rest/v1/script/httpproxy/run"
+
+  # Post Nexus 3.8
+  curl -v -H "Accept: application/json" -H "Content-Type: application/json" -d "$_PROXY_JSON" -u "$_NEXUS_USER:$_NEXUS_PWD" "${_NEXUS_URL}/service/rest/v1/script/"
+  curl -v -X POST -H "Content-Type: text/plain" -u "$_NEXUS_USER:$_NEXUS_PWD" "${_NEXUS_URL}/service/rest/v1/script/httpproxy/run"
+
+  read -r -d '' _PROXY_JSON << EOM
+{
+  "name": "httpsproxy",
+  "type": "groovy",
+  "content": "core.httpsProxy('$PROXY_HOST', '$PROXY_PORT')"
+}
+EOM
+
+  # Pre Nexus 3.8
+  curl -v -H "Accept: application/json" -H "Content-Type: application/json" -d "$_PROXY_JSON" -u "$_NEXUS_USER:$_NEXUS_PWD" "${_NEXUS_URL}/service/siesta/rest/v1/script/"
+  curl -v -X POST -H "Content-Type: text/plain" -u "$_NEXUS_USER:$_NEXUS_PWD" "${_NEXUS_URL}/service/siesta/rest/v1/script/httpsproxy/run"
+
+  # Post Nexus 3.8
+  curl -v -H "Accept: application/json" -H "Content-Type: application/json" -d "$_PROXY_JSON" -u "$_NEXUS_USER:$_NEXUS_PWD" "${_NEXUS_URL}/service/rest/v1/script/"
+  curl -v -X POST -H "Content-Type: text/plain" -u "$_NEXUS_USER:$_NEXUS_PWD" "${_NEXUS_URL}/service/rest/v1/script/httpsproxy/run"
+
+  read -r -d '' _PROXY_JSON << EOM
+{
+  "name": "noproxy",
+  "type": "groovy",
+  "content": "core.nonProxyHosts('$NO_PROXY')"
+}
+EOM
+
+  # Pre Nexus 3.8
+  curl -v -H "Accept: application/json" -H "Content-Type: application/json" -d "$_PROXY_JSON" -u "$_NEXUS_USER:$_NEXUS_PWD" "${_NEXUS_URL}/service/siesta/rest/v1/script/"
+  curl -v -X POST -H "Content-Type: text/plain" -u "$_NEXUS_USER:$_NEXUS_PWD" "${_NEXUS_URL}/service/siesta/rest/v1/script/noproxy/run"
+
+  # Post Nexus 3.8
+  curl -v -H "Accept: application/json" -H "Content-Type: application/json" -d "$_PROXY_JSON" -u "$_NEXUS_USER:$_NEXUS_PWD" "${_NEXUS_URL}/service/rest/v1/script/"
+  curl -v -X POST -H "Content-Type: text/plain" -u "$_NEXUS_USER:$_NEXUS_PWD" "${_NEXUS_URL}/service/rest/v1/script/noproxy/run"
+}
+
 #
 # add_nexus3_group_repo [comma-separated-repo-ids] [group-id] [nexus-username] [nexus-password] [nexus-url]
 #
