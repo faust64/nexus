@@ -133,11 +133,11 @@ objects:
       app: ${SERVICE_NAME}
     name: ${SERVICE_NAME}
   spec:
+    port:
+      targetPort: 8081-tcp
     tls:
       insecureEdgeTerminationPolicy: Redirect
       termination: edge
-    port:
-      targetPort: 8081-tcp
     to:
       kind: Service
       name: ${SERVICE_NAME}
