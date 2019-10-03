@@ -114,6 +114,10 @@ EOM
   curl -v -X POST -H "Content-Type: text/plain" -u "$_NEXUS_USER:$_NEXUS_PWD" "${_NEXUS_URL}/service/rest/v1/script/$_REPO_ID/run"
 }
 
+#
+# add_nexus3_proxy [nexus-username] [nexus-password] [nexus-url]
+#    translates HTTP_PROXY/NO_PROXY env vars
+#
 function add_nexus3_proxy() {
   PROXY_HOST=$(echo $HTTP_PROXY | sed 's|.*://||')
   if echo "$PROXY_HOST" | grep : >/dev/null; then
@@ -121,6 +125,9 @@ function add_nexus3_proxy() {
     PROXY_HOST=$(echo $PROXY_HOST | cut -d: -f1)
   else
     PROXY_PORT=3128
+  fi
+  if test "$NO_PROXY"; then
+    PROXY_EXCLUDE=$(echo "$NO_PROXY" | tr ',' '\n')
   fi
   local _NEXUS_USER=$1
   local _NEXUS_PWD=$2
@@ -130,7 +137,7 @@ function add_nexus3_proxy() {
 {
   "name": "httpproxy",
   "type": "groovy",
-  "content": "core.httpProxy('$PROXY_HOST', '$PROXY_PORT')"
+  "content": "core.httpProxy('$PROXY_HOST', '$PROXY_PORT' as int)"
 }
 EOM
 
@@ -146,7 +153,7 @@ EOM
 {
   "name": "httpsproxy",
   "type": "groovy",
-  "content": "core.httpsProxy('$PROXY_HOST', '$PROXY_PORT')"
+  "content": "core.httpsProxy('$PROXY_HOST', '$PROXY_PORT' as int)"
 }
 EOM
 
@@ -162,7 +169,7 @@ EOM
 {
   "name": "noproxy",
   "type": "groovy",
-  "content": "core.nonProxyHosts('$NO_PROXY')"
+  "content": "core.nonProxyHosts('$PROXY_EXCLUDE' as String[])"
 }
 EOM
 

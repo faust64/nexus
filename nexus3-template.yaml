@@ -44,7 +44,7 @@ objects:
             command:
               - "/bin/bash"
               - "-c"
-              - "curl -o /tmp/nexus-functions -s https://raw.githubusercontent.com/faust64/nexus/master/scripts/nexus-functions; source /tmp/nexus-functions; add_nexus3_redhat_repos admin admin123 http://${SERVICE_NAME}:8081; if test \"$HTTP_PROXY\"; then add_nexus3_proxy; fi"
+              - "curl -o /tmp/nexus-functions -s https://raw.githubusercontent.com/faust64/nexus/master/scripts/nexus-functions; source /tmp/nexus-functions; add_nexus3_redhat_repos admin admin123 http://${SERVICE_NAME}:8081; if test \"$HTTP_PROXY\"; then add_nexus3_proxy admin admin123 http://${SERVICE_NAME}:8081; fi"
             env:
             - name: HTTP_PROXY
               value: "${HTTP_PROXY}"
@@ -62,12 +62,6 @@ objects:
         - env:
           - name: CONTEXT_PATH
             value: /
-          - name: HTTP_PROXY
-            value: "${HTTP_PROXY}"
-          - name: HTTPS_PROXY
-            value: "${HTTPS_PROXY}"
-          - name: NO_PROXY
-            value: "${NO_PROXY}"
           image: ' '
           imagePullPolicy: IfNotPresent
           livenessProbe:
